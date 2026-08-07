@@ -19,6 +19,14 @@
   box-sizing: border-box;
 }
 
+/* The `hidden` attribute only sets `display: none` at user-agent priority, so
+   any explicit `display` in this file silently beats it. `form` and `.link-row`
+   are both flex, which is exactly that situation. Without this rule the upload
+   form stays on screen after the share link appears. */
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   padding: 2rem 1rem;
