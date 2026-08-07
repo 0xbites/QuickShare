@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "dev": "nodemon server.js",
-    "serve": "node server.js"
+    "serve": "node server.js",
+    "reports": "node scripts/reports.js",
+    "takedown": "node scripts/takedown.js"
   },
   "keywords": [],
   "author": "",
