@@ -1,26 +1,41 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=bb, initial-scale=1.0">
-    <title>Document</title>
-    <link rel="stylesheet" href="/css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-</head>
-<body>
-    <div class="left">
-        <div class="download-container">
-            <img src="/images/download_icon.png" alt="">
-            <form action="/files/download/<%= uuid %>" method="GET">
-                <button type="submit">Download File</button>
-            </form>
-            <h4><i class="fas fa-exclamation-triangle"></i>Files will be deleted one day after they are uploaded.</h4>
-        </div>
-    </div>
 
-    <div class="right">
-        <img src="/images/bg.jpg" alt="">
-    </div>
-   
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuickShare — download</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<!-- The uuid is passed through a data attribute rather than interpolated into
+     the script, so no server value is ever parsed as JavaScript. It is also
+     needed at decryption time: the uuid is the additional authenticated data
+     that binds this ciphertext to this link. -->
+<body data-uuid="<%= uuid %>">
+  <main class="card">
+    <h1>A file is waiting for you</h1>
+
+    <!-- Only the size is shown. The server does not know the filename; it
+         appears once your browser has decrypted the file. -->
+    <dl class="facts">
+      <div>
+        <dt>Size</dt>
+        <dd><%= (sizeBytes / 1024).toFixed(1) %> KB encrypted</dd>
+      </div>
+      <div>
+        <dt>Expires</dt>
+        <dd><%= expiresAt.toISOString().replace('T', ' ').slice(0, 16) %> UTC</dd>
+      </div>
+    </dl>
+
+    <button type="button" id="download-button">Download and decrypt</button>
+
+    <p class="note">Decryption happens in this browser. The key came from the link and was never sent to the server.</p>
+    <p id="status" role="status" aria-live="polite"></p>
+  </main>
+
+  <script type="module" src="/js/download.js"></script>
 </body>
+
 </html>

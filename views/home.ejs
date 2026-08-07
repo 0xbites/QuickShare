@@ -1,33 +1,45 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuickShare — encrypted file sharing</title>
   <link rel="stylesheet" href="/css/style.css">
 </head>
+
 <body>
+  <main class="card">
+    <h1>Share a file</h1>
+    <p class="lede">Encrypted in your browser before it is uploaded. The server never receives the key.</p>
 
-  <div class="left">
-    
-      
-      <div class="container">
-        
-        <h3>Click on the "Choose File" button to upload a file</h3>
-    
-        <form action="/api/files" method="post" enctype="multipart/form-data">
-          <input type="file" id="myFile" name="myFile">
-          <input type="submit">
-        </form>
+    <!-- Progressive enhancement is deliberately not attempted. Without
+         JavaScript there is no encryption, and uploading a plaintext file to a
+         page that promises otherwise would be worse than refusing. -->
+    <form id="upload-form">
+      <input type="file" id="file-input" name="file" required>
+      <button type="submit" id="submit-button">Encrypt and upload</button>
+    </form>
+
+    <div id="result" hidden>
+      <h2>Your link is ready</h2>
+      <div class="link-row">
+        <input type="text" id="share-link" readonly>
+        <button type="button" id="copy-button">Copy</button>
       </div>
-  </div>
 
-  <div class="right">
-    <img src="/images/bg.jpg" alt="">
-  </div>
+      <p class="warning">
+        <strong>This link contains the decryption key.</strong>
+        Anyone who has it can open the file, so send it through a channel you trust.
+        The key is in the part after the <code>#</code>, which is never sent to the server.
+      </p>
+      <p class="note">The link stops working after 24 hours.</p>
+    </div>
 
-  
-  
+    <p id="status" role="status" aria-live="polite"></p>
+  </main>
 
-
-
+  <script type="module" src="/js/upload.js"></script>
 </body>
 
 </html>
