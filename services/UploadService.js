@@ -18,11 +18,13 @@ class UploadService {
    * @param {object} deps
    * @param {import('../repositories/FileRepository')} deps.fileRepository
    * @param {import('../storage/StorageGateway')} deps.storageGateway
+   * @param {import('./AdmissionService')} deps.admissionService
    * @param {number} deps.retentionHours
    */
-  constructor({ fileRepository, storageGateway, retentionHours }) {
+  constructor({ fileRepository, storageGateway, admissionService, retentionHours }) {
     this.fileRepository = fileRepository;
     this.storageGateway = storageGateway;
+    this.admissionService = admissionService;
     this.retentionHours = retentionHours;
   }
 
@@ -32,6 +34,10 @@ class UploadService {
    * @returns {Promise<{ uuid: string, expiresAt: Date }>}
    */
   async allocate() {
+    // Cheap refusal when the service is already full, so a client is told
+    // before it spends time encrypting.
+    await this.admissionService.assertNotFull();
+
     const record = await this.fileRepository.allocate({
       storageKey: this.storageGateway.newKey(),
       retentionHours: this.retentionHours,
@@ -60,6 +66,11 @@ class UploadService {
     if (!record || record.storedAt !== null) {
       throw conflict();
     }
+
+    // Authoritative capacity check, on the real body length and before anything
+    // is written. Checking after the write would mean deleting a blob that
+    // should never have been accepted.
+    await this.admissionService.assertFits(bytes.length);
 
     await this.storageGateway.write(record.storageKey, bytes);
 

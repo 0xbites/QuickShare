@@ -35,3 +35,31 @@ CREATE INDEX IF NOT EXISTS files_expires_idx ON files (expires_at);
 -- satisfy it are a small minority.
 CREATE INDEX IF NOT EXISTS files_unstored_idx ON files (created_at)
   WHERE stored_at IS NULL;
+
+-- Supports SUM(size_bytes) for the storage ceiling, which runs on every upload.
+CREATE INDEX IF NOT EXISTS files_stored_idx ON files (stored_at)
+  WHERE stored_at IS NOT NULL;
+
+
+-- Abuse reports.
+--
+-- Content cannot be inspected, so reports are the only signal the operator has
+-- that something needs removing. The endpoint is deliberately unauthenticated:
+-- requiring an account to report abuse would defeat the point.
+CREATE TABLE IF NOT EXISTS abuse_reports (
+  id               BIGSERIAL   PRIMARY KEY,
+
+  -- Not a foreign key. A report must survive the file it concerns, otherwise
+  -- taking the file down would erase the record of why.
+  file_uuid        UUID        NOT NULL,
+
+  reason           TEXT        NOT NULL,
+
+  -- Hashed, never raw. Enough to spot one address filing hundreds of reports,
+  -- without keeping an identifier in a tool built for privacy.
+  reporter_ip_hash TEXT        NOT NULL,
+
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS abuse_reports_file_idx ON abuse_reports (file_uuid);

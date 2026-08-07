@@ -95,6 +95,27 @@ class PostgresFileRepository extends FileRepository {
     );
     return rows.map((row) => row.storage_key);
   }
+
+  /** @inheritdoc */
+  async totalStoredBytes() {
+    // COALESCE because SUM over no rows is null, and the ceiling arithmetic
+    // needs a number. Supported by files_stored_idx.
+    const { rows } = await this.pool.query(
+      `SELECT COALESCE(SUM(size_bytes), 0) AS total
+         FROM files
+        WHERE stored_at IS NOT NULL`,
+    );
+    return Number(rows[0].total);
+  }
+
+  /** @inheritdoc */
+  async deleteByUuid(uuid) {
+    const { rows } = await this.pool.query(
+      'DELETE FROM files WHERE uuid = $1 RETURNING storage_key',
+      [uuid],
+    );
+    return rows[0] ? rows[0].storage_key : null;
+  }
 }
 
 module.exports = PostgresFileRepository;

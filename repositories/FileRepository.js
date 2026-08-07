@@ -72,6 +72,27 @@ class FileRepository {
   async deleteExpired(_abandonedAfterMinutes) {
     throw new Error('FileRepository.deleteExpired is not implemented');
   }
+
+  /**
+   * Total bytes currently stored, used to enforce the service-wide ceiling.
+   * Counts only completed uploads, since a reservation occupies no space.
+   *
+   * @returns {Promise<number>}
+   */
+  async totalStoredBytes() {
+    throw new Error('FileRepository.totalStoredBytes is not implemented');
+  }
+
+  /**
+   * Removes one record outright, whatever its state, and returns its storage
+   * key. Used for operator takedown.
+   *
+   * @param {string} _uuid
+   * @returns {Promise<string|null>} null when no such record existed
+   */
+  async deleteByUuid(_uuid) {
+    throw new Error('FileRepository.deleteByUuid is not implemented');
+  }
 }
 
 module.exports = FileRepository;
