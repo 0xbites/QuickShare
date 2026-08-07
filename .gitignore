@@ -1,3 +1,12 @@
 .env
 node_modules/
 
+# Encrypted blobs. Never checked in.
+uploads/*
+!uploads/.gitkeep
+
+# Internal working notes, kept out of the repository by request.
+docs/
+
+# Assistant instruction file, kept local.
+CLAUDE.md
