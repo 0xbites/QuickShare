@@ -12,11 +12,13 @@ class AppError extends Error {
   /**
    * @param {number} status
    * @param {string} message safe to show a client — never include internals
+   * @param {Record<string, string>} [headers] response headers this error implies
    */
-  constructor(status, message) {
+  constructor(status, message, headers = {}) {
     super(message);
     this.name = 'AppError';
     this.status = status;
+    this.headers = headers;
   }
 }
 
@@ -29,4 +31,25 @@ const conflict = () => new AppError(409, 'This upload slot is no longer availabl
 /** The request body was missing or malformed. */
 const badRequest = (message) => new AppError(400, message);
 
-module.exports = { AppError, gone, conflict, badRequest };
+/**
+ * This client is going too fast. Carries `Retry-After` so a well-behaved caller
+ * knows when to come back instead of hammering.
+ *
+ * @param {number} retryAfterSeconds
+ */
+const tooManyRequests = (retryAfterSeconds) =>
+  new AppError(429, 'Too many requests. Please wait a moment and try again.', {
+    'Retry-After': String(retryAfterSeconds),
+  });
+
+/**
+ * The service is full.
+ *
+ * Deliberately 503 rather than 429: a service-wide capacity limit and a
+ * per-client throttle are different conditions, and conflating them hides a
+ * real operational problem behind what looks like ordinary throttling.
+ */
+const capacityExhausted = () =>
+  new AppError(503, 'This service is temporarily full. Please try again later.');
+
+module.exports = { AppError, gone, conflict, badRequest, tooManyRequests, capacityExhausted };

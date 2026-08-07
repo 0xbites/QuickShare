@@ -31,6 +31,46 @@ function integer(name, fallback) {
   return value;
 }
 
+/**
+ * Express's `trust proxy` setting.
+ *
+ * Both possible mistakes here are damaging, so it is explicit configuration
+ * with a safe default rather than a guess:
+ *
+ * - unset behind a load balancer, every client shares the balancer's address,
+ *   so one busy user exhausts the rate limit for everybody;
+ * - set too broadly, a client spoofs `X-Forwarded-For` and bypasses limits.
+ *
+ * Set `TRUST_PROXY=1` on Render (one proxy in front). Leave it off locally.
+ *
+ * @returns {boolean|number|string}
+ */
+function trustProxy() {
+  const raw = process.env.TRUST_PROXY;
+  if (!raw || raw === 'false' || raw === '0') return false;
+  if (raw === 'true') return true;
+
+  const hops = Number(raw);
+  return Number.isInteger(hops) && hops > 0 ? hops : raw;
+}
+
+/**
+ * Secret used to hash reporter IP addresses.
+ *
+ * Optional. Without it a random value is generated per process, which keeps the
+ * addresses out of the database but means hashes stop matching across restarts,
+ * so a persistent spammer cannot be recognised after a redeploy.
+ *
+ * @returns {string}
+ */
+function ipHashSecret() {
+  const configured = process.env.IP_HASH_SECRET;
+  if (configured) return configured;
+
+  console.warn('IP_HASH_SECRET is not set; reporter hashes will not survive a restart.');
+  return require('node:crypto').randomBytes(32).toString('hex');
+}
+
 module.exports = Object.freeze({
   /** Postgres connection string. */
   databaseUrl: required('DATABASE_URL'),
@@ -48,4 +88,35 @@ module.exports = Object.freeze({
 
   /** How often expired rows and their blobs are swept. */
   sweepIntervalMs: integer('SWEEP_INTERVAL_MS', 60 * 60 * 1000),
+
+  trustProxy: trustProxy(),
+
+  ipHashSecret: ipHashSecret(),
+
+  /**
+   * Service-wide cap on total stored bytes. Checked against real body lengths,
+   * never a size the client claims. This is the control that protects the bill.
+   */
+  storageCeilingBytes: integer('STORAGE_CEILING_BYTES', 5 * 1024 * 1024 * 1024),
+
+  /** Hard cap on tracked clients per limiter, bounding counter-map memory. */
+  rateLimitMaxKeys: integer('RATE_LIMIT_MAX_KEYS', 50_000),
+
+  /** Slot reservation is cheap per call, so this is the flood-control limit. */
+  allocateRate: {
+    max: integer('ALLOCATE_RATE_MAX', 20),
+    windowMs: integer('ALLOCATE_RATE_WINDOW_MS', 60 * 1000),
+  },
+
+  /** Uploads cost bandwidth and disk, so this is tighter than allocate. */
+  uploadRate: {
+    max: integer('UPLOAD_RATE_MAX', 10),
+    windowMs: integer('UPLOAD_RATE_WINDOW_MS', 60 * 1000),
+  },
+
+  /** Reporting must stay easy, so this only has to stop bulk spam. */
+  reportRate: {
+    max: integer('REPORT_RATE_MAX', 5),
+    windowMs: integer('REPORT_RATE_WINDOW_MS', 60 * 60 * 1000),
+  },
 });

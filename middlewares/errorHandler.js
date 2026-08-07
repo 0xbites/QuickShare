@@ -37,6 +37,13 @@ function errorHandler(err, req, res, next) {
 
   if (res.headersSent) return;
 
+  // Some failures imply headers — a 429 is not actionable without Retry-After.
+  if (expected) {
+    for (const [name, value] of Object.entries(err.headers ?? {})) {
+      res.setHeader(name, value);
+    }
+  }
+
   if (req.accepts(['html', 'json']) === 'json' || req.path.startsWith('/api/')) {
     res.status(status).json({ error: message });
     return;

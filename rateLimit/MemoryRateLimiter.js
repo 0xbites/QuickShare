@@ -75,12 +75,47 @@ class MemoryRateLimiter extends RateLimiter {
     if (estimated >= this.max) {
       return {
         allowed: false,
-        retryAfterSeconds: Math.max(1, Math.ceil((currentWindow + this.windowMs - now) / 1000)),
+        retryAfterSeconds: this.retryAfterSeconds(entry, currentWindow, now),
       };
     }
 
     entry.count += 1;
     return { allowed: true, retryAfterSeconds: 0 };
+  }
+
+  /**
+   * When the weighted estimate will next fall below the limit.
+   *
+   * The obvious answer — the end of the current window — is wrong for a sliding
+   * window, because the previous window's count keeps contributing after the
+   * boundary. A client that obeyed that value would be refused again on arrival,
+   * which makes `Retry-After` worse than useless.
+   *
+   * Solving `previous × (1 − x) + count < max` for the elapsed fraction `x`
+   * gives the honest answer.
+   *
+   * @param {{ count: number, previous: number }} entry
+   * @param {number} currentWindow
+   * @param {number} now
+   * @returns {number} whole seconds, never less than 1
+   */
+  retryAfterSeconds(entry, currentWindow, now) {
+    let readyAt;
+
+    if (entry.count < this.max && entry.previous > 0) {
+      // Decay within this window is enough.
+      const fractionNeeded = 1 - (this.max - entry.count) / entry.previous;
+      readyAt = currentWindow + this.windowMs * fractionNeeded;
+    } else if (entry.count >= this.max) {
+      // This window is spent. After the boundary the current count becomes the
+      // previous one, so it has to decay too before anything is permitted.
+      const fractionNeeded = 1 - this.max / entry.count;
+      readyAt = currentWindow + this.windowMs + this.windowMs * fractionNeeded;
+    } else {
+      readyAt = currentWindow + this.windowMs;
+    }
+
+    return Math.max(1, Math.ceil((readyAt - now) / 1000));
   }
 
   /**
