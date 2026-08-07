@@ -171,3 +171,43 @@ code {
 a {
   color: var(--accent);
 }
+
+/* Reporting is collapsed by default: it must be reachable, but it is not what
+   most visitors came for. */
+.report {
+  margin-top: 1.75rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--rule);
+  font-size: 0.85rem;
+}
+
+.report summary {
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.report form {
+  margin-top: 0.85rem;
+  gap: 0.65rem;
+  align-items: flex-start;
+}
+
+.report textarea {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--bg);
+  font: inherit;
+  resize: vertical;
+}
+
+.report button {
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+}
+
+#report-status {
+  margin: 0.6rem 0 0;
+  color: var(--muted);
+}

@@ -34,6 +34,20 @@
 
     <p class="note">Decryption happens in this browser. The key came from the link and was never sent to the server.</p>
     <p id="status" role="status" aria-live="polite"></p>
+
+    <!-- Nobody can inspect what this file contains, so a report is the only way
+         the operator ever learns something needs removing. Collapsed by default
+         to stay out of the way, and it sends only the uuid and the reason —
+         never the key, which this page holds. -->
+    <details class="report">
+      <summary>Report this file</summary>
+      <form id="report-form">
+        <textarea id="report-reason" rows="3" maxlength="500" required
+                  placeholder="What is wrong with this file?"></textarea>
+        <button type="submit">Send report</button>
+      </form>
+      <p id="report-status" role="status" aria-live="polite"></p>
+    </details>
   </main>
 
   <script type="module" src="/js/download.js"></script>

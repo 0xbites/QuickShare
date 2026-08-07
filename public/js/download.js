@@ -59,6 +59,41 @@ button.addEventListener('click', async () => {
 });
 
 /**
+ * Abuse reporting.
+ *
+ * Sends the uuid and a reason — never the key, which only this page holds.
+ * A refusal is almost always the hourly rate limit, so that case gets its own
+ * message rather than a generic failure.
+ */
+document.querySelector('#report-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+
+  const reasonField = document.querySelector('#report-reason');
+  const reportStatus = document.querySelector('#report-status');
+
+  reportStatus.textContent = 'Sending…';
+
+  try {
+    const response = await fetch(`/api/reports/${uuid}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: reasonField.value }),
+    });
+
+    if (response.status === 429) {
+      reportStatus.textContent = 'Too many reports from here. Please try again later.';
+      return;
+    }
+    if (!response.ok) throw new Error('Could not send the report.');
+
+    reasonField.value = '';
+    reportStatus.textContent = 'Report received. Thank you.';
+  } catch (error) {
+    reportStatus.textContent = error.message;
+  }
+});
+
+/**
  * Hands the decrypted bytes to the browser as a download.
  *
  * The anchor is added to the document before being clicked, because some
