@@ -14,6 +14,7 @@ const createReportsRouter = require('./routes/reports');
 
 const securityHeaders = require('./middlewares/securityHeaders');
 const errorHandler = require('./middlewares/errorHandler');
+const asyncHandler = require('./middlewares/asyncHandler');
 
 /**
  * HTTP wiring and startup.
@@ -37,6 +38,22 @@ function buildApp(services) {
   app.set('trust proxy', env.trustProxy);
 
   app.use(securityHeaders);
+
+  /**
+   * Deployment health check.
+   *
+   * Queries the database rather than returning a bare 200, because a process that
+   * booted but cannot reach Postgres is not healthy — it would report success
+   * while failing every real route. Deliberately not rate limited: a limiter here
+   * would let one noisy client make the service look down.
+   */
+  app.get(
+    '/healthz',
+    asyncHandler(async (req, res) => {
+      await services.pool.query('SELECT 1');
+      res.json({ ok: true });
+    }),
+  );
 
   // Absolute path, so behaviour does not depend on the working directory.
   app.use(express.static(path.join(__dirname, 'public')));
