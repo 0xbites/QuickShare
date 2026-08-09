@@ -1,4 +1,9 @@
-.env
+# Every .env variant, including backups and per-environment copies. Only the
+# committed placeholder file is exempt — a plain `.env` rule leaves `.env.bak`,
+# `.env.local` and `.env.production` untracked but committable, which is one
+# `git add .` away from publishing real credentials.
+.env*
+!.env.example
 node_modules/
 
 # Encrypted blobs. Never checked in.

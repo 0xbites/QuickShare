@@ -11,7 +11,10 @@ services:
     name: quickshare
     runtime: node
     plan: free
-    region: frankfurt
+    # Must stay near the Neon project's region. The database is in
+    # ap-southeast-1, and every request makes at least one query, so a
+    # cross-region pairing adds latency to each of them.
+    region: singapore
 
     # `npm ci` rather than `npm install`: it installs exactly what
     # package-lock.json pins instead of re-resolving the ^ ranges at build time,
