@@ -8,6 +8,8 @@ const pool = require('./db/pool');
 const PostgresFileRepository = require('./repositories/PostgresFileRepository');
 const PostgresReportRepository = require('./repositories/PostgresReportRepository');
 const DiskStorageGateway = require('./storage/DiskStorageGateway');
+const S3StorageGateway = require('./storage/S3StorageGateway');
+const { signRequest } = require('./storage/signV4');
 const MemoryRateLimiter = require('./rateLimit/MemoryRateLimiter');
 
 const AdmissionService = require('./services/AdmissionService');
@@ -27,7 +29,15 @@ const DeletionService = require('./services/DeletionService');
  * @returns {Promise<object>}
  */
 async function createContainer() {
-  const storageGateway = new DiskStorageGateway(path.join(__dirname, 'uploads'));
+  // The only place either adapter is named. Services depend on the port, so
+  // nothing downstream knows or cares which one is in use.
+  const storageGateway =
+    env.storageDriver === 's3'
+      ? new S3StorageGateway({ ...env.s3, signRequest })
+      : new DiskStorageGateway(path.join(__dirname, 'uploads'));
+
+  // Verifies the directory exists, or that the bucket is reachable and the
+  // credentials are accepted. Either way, a failure here stops the boot.
   await storageGateway.init();
 
   const fileRepository = new PostgresFileRepository(pool);

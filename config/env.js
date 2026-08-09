@@ -32,6 +32,57 @@ function integer(name, fallback) {
 }
 
 /**
+ * @param {string} name
+ * @param {string[]} allowed
+ * @param {string} fallback
+ * @returns {string}
+ */
+function oneOf(name, allowed, fallback) {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') return fallback;
+
+  if (!allowed.includes(raw)) {
+    throw new Error(`Environment variable ${name} must be one of ${allowed.join(', ')}, got: ${raw}`);
+  }
+  return raw;
+}
+
+/**
+ * Where blob bytes are kept.
+ *
+ * `disk` is correct for local development. `s3` is required on any host with an
+ * ephemeral filesystem, which includes every free tier worth using — otherwise
+ * blobs vanish on restart while their rows survive, and a link resolves to
+ * nothing.
+ *
+ * A typo throws rather than falling back to `disk`, because a silent fallback in
+ * production would reintroduce exactly that failure.
+ */
+const storageDriver = oneOf('STORAGE_DRIVER', ['disk', 's3'], 'disk');
+
+/**
+ * Object storage credentials, required only when that driver is selected.
+ *
+ * Gated so local development needs no Cloudflare account, while a deployment that
+ * forgets a credential fails at boot with the same message shape as every other
+ * missing variable.
+ *
+ * @returns {object|null}
+ */
+function s3Config() {
+  if (storageDriver !== 's3') return null;
+
+  return {
+    endpoint: required('S3_ENDPOINT'),
+    bucket: required('S3_BUCKET'),
+    accessKeyId: required('S3_ACCESS_KEY_ID'),
+    secretAccessKey: required('S3_SECRET_ACCESS_KEY'),
+    // R2 ignores the region but SigV4 requires one in the credential scope.
+    region: process.env.S3_REGION || 'auto',
+  };
+}
+
+/**
  * Express's `trust proxy` setting.
  *
  * Both possible mistakes here are damaging, so it is explicit configuration
@@ -88,6 +139,12 @@ module.exports = Object.freeze({
 
   /** How often expired rows and their blobs are swept. */
   sweepIntervalMs: integer('SWEEP_INTERVAL_MS', 60 * 60 * 1000),
+
+  /** Which storage adapter the composition root builds: 'disk' or 's3'. */
+  storageDriver,
+
+  /** Object storage settings, or null when the disk driver is selected. */
+  s3: s3Config(),
 
   trustProxy: trustProxy(),
 
