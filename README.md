@@ -3,30 +3,29 @@
 Ephemeral file sharing where the server cannot read the files it stores.
 Live at **[quickshare-har5.onrender.com](https://quickshare-har5.onrender.com)**.
 
-Files are encrypted in the sender's browser before upload. The key is placed in the URL fragment — the
-part after `#` — which browsers never transmit and strip from `Referer`. The server receives ciphertext
-and a byte count, and has no code path that could log a key, because none ever arrives.
+Files are encrypted in the sender's browser before upload. The key goes in the URL fragment, the part after
+`#`, which browsers do not send in a request and strip from `Referer`. The server only ever receives
+ciphertext and a byte count.
 
-This is zero knowledge of **content**, not of everything. The service still knows that a file exists, how
-large it is, when it arrived, and which addresses uploaded and downloaded it. It is also unrelated to
-zero-knowledge *proofs*, which is a different subject that shares the name.
+This covers file **content**, not everything. The service still knows a file exists, how large it is, when
+it arrived, and which addresses uploaded and downloaded it. Note also that this is not related to
+zero-knowledge *proofs*, which is a different topic with a similar name.
 
 | | |
 |---|---|
 | ![Sending a file](.github/screenshots/share.png) | ![Receiving a file](.github/screenshots/receive.png) |
 
-## Where the guarantee stops
+## Threat model
 
-The server cannot read your file, but it does serve the JavaScript that can. A compromised or malicious
-host could ship a modified page that copies the key out of the fragment.
+The key never reaches the server, so stored files cannot be decrypted there.
 
-That converts *"the operator will not read my files"* into *"the operator will not serve malicious
-JavaScript"*. Weaker — but a meaningfully different kind of weaker. Reading a file server-side leaves no
-trace; serving backdoored code is a deliberate act, delivered to every visitor, and visible to anyone who
-looks at the page source. Every web-delivered end-to-end encrypted product has this property.
+The limit is that the server also serves the JavaScript that handles the key. A modified page could read
+the fragment and send it elsewhere, so the trust assumption is about the code being served rather than the
+files being stored. Page tampering is at least detectable: it is visible in the source and is served to
+every visitor.
 
-It is also why there is no client framework and no third-party script on any page: on the download page,
-bundle size is a security property, because every line of JavaScript there can read `location.hash`.
+This applies to any browser-based end-to-end encryption. It is also why no page loads a third-party script
+and why there is no client framework — anything running on the download page can read `location.hash`.
 
 ## How it works
 
@@ -80,13 +79,13 @@ rateLimit/      port + in-memory adapter
 container.js    the only file that names concrete adapters
 ```
 
-Services depend on interfaces, never on `pg` or `fs`, so swapping either store is one new adapter class
-and one line in the composition root. That claim was tested rather than asserted: moving blobs from local
-disk to S3-compatible object storage for deployment touched no service, route, or view.
+Services depend on interfaces, never on `pg` or `fs`, so swapping either store means one new adapter class
+and one line in the composition root. Moving blobs from local disk to S3-compatible object storage for
+deployment did not touch a service, route, or view.
 
-Metadata lives in Postgres and holds no filename, MIME type, or key — the schema is the enforcement. The
-public `uuid` and the internal `storage_key` are deliberately different values, so the object store cannot
-correlate a blob with a share link.
+The `files` table has no column for a filename, MIME type, or key, so there is nowhere to put them even by
+accident. The public `uuid` and the internal `storage_key` are separate values, which keeps the object
+store from being able to match a blob to a share link.
 
 ## Configuration
 
@@ -103,20 +102,9 @@ Two worth knowing before deploying behind a proxy or load balancer:
 
 ## Limitations
 
-Stated rather than discovered later.
-
 - **No malware scanning, and none is possible.** The server holds ciphertext and no key, so it cannot
   inspect what it stores. Abuse reporting and takedown are the only moderation available, and endpoint
   antivirus still applies because files are decrypted on the recipient's machine.
 - **Metadata leaks.** Ciphertext length approximates plaintext length. Upload and download addresses and
   timings can link a sender to a recipient.
-- **Rate limits are per process.** Counters live in memory and are not shared, so the effective ceiling is
-  the configured value multiplied by however many instances are running. Treat a configured limit as a
-  floor on what gets through, not a ceiling.
-- **Whole objects are buffered in memory** on both the upload and download paths, which is what caps the
-  practical file size on a small instance. Streaming is the fix and is not done.
 - **No owner tokens.** A sender cannot revoke a link before it expires; only the operator can.
-
-## License
-
-ISC.
