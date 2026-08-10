@@ -19,11 +19,24 @@ const RateLimiter = require('./RateLimiter');
  * grows until it dies. Trading one denial of service for another is no defence,
  * hence the hard entry cap and the periodic sweep.
  *
- * ## Single-process only
+ * ## Counters are per process, and that has been observed in production
  *
- * Counters are not shared. Across N instances the effective limit is N times the
- * configured value. Acceptable on a single free-tier instance; swap in a Redis
- * adapter before scaling out.
+ * Counters live in this process and are shared with nobody, so the effective
+ * ceiling is the configured value multiplied by however many instances are
+ * running.
+ *
+ * Do not assume that number is one. A host can run several instances without
+ * saying so, and rolling deploys overlap old and new processes by design. This
+ * was measured against a deployment believed to be single-instance: an endpoint
+ * whose window is an hour kept accepting requests after its allowance should have
+ * been spent, while a concurrent process returned refusals with a coherent
+ * countdown — two independent counters serving the same traffic.
+ *
+ * So treat the configured value as a floor on what gets through, never a ceiling.
+ * Limits of this kind still bound abuse; they do not enforce an exact rate.
+ *
+ * The fix is a shared store rather than a bigger map. `RateLimiter` exists as a
+ * port so that adapter is one new file and no route changes.
  */
 class MemoryRateLimiter extends RateLimiter {
   /**
