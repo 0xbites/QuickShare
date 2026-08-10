@@ -15,18 +15,6 @@ zero-knowledge *proofs*, which is a different topic with a similar name.
 |---|---|
 | ![Sending a file](.github/screenshots/share.png) | ![Receiving a file](.github/screenshots/receive.png) |
 
-## Threat model
-
-The key never reaches the server, so stored files cannot be decrypted there.
-
-The limit is that the server also serves the JavaScript that handles the key. A modified page could read
-the fragment and send it elsewhere, so the trust assumption is about the code being served rather than the
-files being stored. Page tampering is at least detectable: it is visible in the source and is served to
-every visitor.
-
-This applies to any browser-based end-to-end encryption. It is also why no page loads a third-party script
-and why there is no client framework — anything running on the download page can read `location.hash`.
-
 ## How it works
 
 1. The browser asks the server to reserve a uuid. This has to happen first, because the uuid is bound
@@ -108,3 +96,6 @@ Two worth knowing before deploying behind a proxy or load balancer:
 - **Metadata leaks.** Ciphertext length approximates plaintext length. Upload and download addresses and
   timings can link a sender to a recipient.
 - **No owner tokens.** A sender cannot revoke a link before it expires; only the operator can.
+- **The server serves the code that handles the key.** Stored files cannot be decrypted server-side, but a
+  modified page could read the fragment and send it somewhere else. This is true of any browser-based
+  end-to-end encryption, and is why no page loads a third-party script.
