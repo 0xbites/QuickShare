@@ -29,8 +29,9 @@ function createFilesRouter({ uploadService, allocateLimiter, uploadLimiter, maxU
    * Reserves a uuid. Must happen before the browser encrypts, because the uuid
    * is bound into the ciphertext as additional authenticated data.
    *
-   * Rate limited because it is unauthenticated and writes a row per call. Left
-   * open, one client sustained roughly 450 000 reservations an hour.
+   * Rate limited because it is unauthenticated and writes a row per call, which
+   * makes it the cheapest way to fill the database. Left open, a single client
+   * sustained a rate high enough to be a real problem within an hour.
    */
   router.post(
     '/allocate',
